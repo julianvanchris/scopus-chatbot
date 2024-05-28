@@ -4,4 +4,4 @@ vertexai
 sentence-transformers
 requests
 python-dotenv
-oath2client
+oauth2client
