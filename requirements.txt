@@ -1,0 +1,7 @@
+google-generativeai
+streamlit
+vertexai
+sentence-transformers
+requests
+python-dotenv
+oath2client
