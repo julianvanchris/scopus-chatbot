@@ -22,7 +22,7 @@ project_id = GOOGLE_CREDENTIALS["project_id"]
 vertexai.init(project=project_id, location="us-central1")
 
 # Retrieve the JSON key file path from Streamlit Secrets
-key_path = st.secrets["google_key_path"]
+key_path = st.secrets["GOOGLE_KEY_PATH"]
 
 # Set the environment variable to point to the key file
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = key_path
