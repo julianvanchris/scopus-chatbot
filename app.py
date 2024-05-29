@@ -6,29 +6,17 @@ from dotenv import load_dotenv
 import google.generativeai as genai
 from sentence_transformers import SentenceTransformer, util
 import numpy as np
-from oauth2client.service_account import ServiceAccountCredentials
-import os
-import json
 
 # Load environment variables
 load_dotenv()
 
 # Load secrets from secrets.toml
-GOOGLE_API_KEY = st.secrets["GOOGLE"]["GOOGLE_API_KEY"]
-SCOPUS_API_KEY = st.secrets["GOOGLE"]["SCOPUS_API_KEY"]
-google_credentials_json = st.secrets["google"]["credentials"]
-
-# Convert the JSON string to a dictionary
-google_credentials = json.loads(google_credentials_json)
-
-# Authenticate and connect to Google Sheets
-credentials = ServiceAccountCredentials.from_json_keyfile_dict(google_credentials)
-
-# Set environment variable for Google Application Credentials
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = json.dumps(google_credentials)
+GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
+SCOPUS_API_KEY = st.secrets["SCOPUS_API_KEY"]
+GOOGLE_CREDENTIALS = st.secrets["GOOGLE_CREDENTIALS"]['gc']
 
 # Initialize Vertex AI
-project_id = google_credentials["project_id"]
+project_id = GOOGLE_CREDENTIALS["project_id"]
 vertexai.init(project=project_id, location="us-central1")
 
 # Set up Google Gemini-Pro AI model
@@ -46,13 +34,13 @@ st.title("🤖 Scopus AI Chatbot")
 # Language selection
 langcols = st.columns([0.2, 0.8])
 with langcols[0]:
-  lang = st.selectbox('Select your language',
-  ('English', 'Español', 'Français', 'Deutsch',
-  'Italiano', 'Português', 'Polski', 'Nederlands',
-  'Русский', '日本語', '한국어', '中文', 'العربية',
-  'हिन्दी', 'Türkçe', 'Tiếng Việt', 'Bahasa Indonesia',
-  'ภาษาไทย', 'Română', 'Ελληνικά', 'Magyar', 'Čeština',
-  'Svenska', 'Norsk', 'Suomi', 'Dansk', 'हिन्दी', 'हिन्�'), index=0)
+    lang = st.selectbox('Select your language',
+    ('English', 'Español', 'Français', 'Deutsch',
+    'Italiano', 'Português', 'Polski', 'Nederlands',
+    'Русский', '日本語', '한국어', '中文', 'العربية',
+    'हिन्दी', 'Türkçe', 'Tiếng Việt', 'Bahasa Indonesia',
+    'ภาษาไทย', 'Română', 'Ελληνικά', 'Magyar', 'Čeština',
+    'Svenska', 'Norsk', 'Suomi', 'Dansk', 'हिन्दी', 'हिन्�'), index=0)
 
 if 'lang' not in st.session_state:
     st.session_state.lang = lang
@@ -81,7 +69,7 @@ scopus_tool = Tool(
 # Load SentenceTransformer model
 @st.cache_resource
 def load_sentence_transformer_model():
-    return SentenceTransformer('all-mpnet-base-v2')
+    return SentenceTransformer('all-MiniLM-L6-v2')
 
 sentence_model = load_sentence_transformer_model()
 
@@ -110,7 +98,7 @@ def load_model(model_name):
     model = GenerativeModel(model_name)
     return model
 
-model = load_model("gemini-1.5-pro-001")
+model = load_model("gemini-1.0-pro")
 
 if 'chat_session' not in st.session_state:
     st.session_state.chat_session = []
@@ -141,10 +129,13 @@ if prompt:
     append_message('user', prompt)
     
     with st.spinner('Wait a moment, I am thinking...'):
-        # Generate a direct answer using the model
-        answer_prompt = f"Provide an explanation or answer based on the following query: {prompt}"
-        answer_response = model.generate_content(Content(role="user", parts=[Part.from_text(answer_prompt)]))
-        explanation = answer_response.candidates[0].text
+        # Stream the response from the model
+        responses = model.generate_content(Content(role="user", parts=[Part.from_text(prompt)]), stream=True)
+        
+        explanation = ""
+        for response in responses:
+            explanation += response.text
+            st.write(response.text)  # Update the Streamlit component iteratively
 
         append_message('ai', explanation)
 
@@ -184,14 +175,17 @@ if prompt:
             # Generate detailed response
             detailed_prompt = f"""Based on the search results for the query '{prompt}', generate a detailed response including the titles, authors, publication dates, DOIs. Here are the results:\n\n{detailed_info}"""
 
-            detailed_response = model.generate_content(Content(role="user", parts=[Part.from_text(detailed_prompt)]))
+            detailed_responses = model.generate_content(Content(role="user", parts=[Part.from_text(detailed_prompt)]), stream=True)
 
-            final_output = detailed_response.candidates[0].text.strip()
-            response_text += final_output
+            final_output = ""
+            for response in detailed_responses:
+                final_output += response.text
+
+            response_text += final_output.strip()
 
             append_message('ai', response_text)
         else:
             no_results = "\nNo open access results found."
-            append_message('ai', no_results)
+            append_message('ai', explanation + no_results)
 
         st.rerun()
