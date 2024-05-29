@@ -129,8 +129,14 @@ def search_scopus(query):
         "field": "dc:title,dc:creator,prism:coverDate,prism:doi,dc:description"
     }
     response = requests.get(url, headers=headers, params=params)
-    results = response.json()
-    return results.get('search-results', {}).get('entry', [])
+    
+    try:
+        results = response.json()
+        return results.get('search-results', {}).get('entry', [])
+    except json.JSONDecodeError:
+        st.error("Scopus server error.")
+        st.write(response.text)  # Log the raw response for debugging
+        return []
 
 # Function to append message to chat session
 def append_message(role, content):
