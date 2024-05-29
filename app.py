@@ -148,7 +148,7 @@ def load_model(model_name):
     model = GenerativeModel(model_name)
     return model
 
-model = load_model("gemini-1.5-pro")
+model = load_model("gemini-1.5-flash-001")
 
 if 'chat_session' not in st.session_state:
     st.session_state.chat_session = []
