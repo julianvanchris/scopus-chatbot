@@ -5,3 +5,4 @@ sentence-transformers
 requests
 python-dotenv
 oauth2client
+pycryptodome
