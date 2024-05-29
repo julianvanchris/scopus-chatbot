@@ -6,6 +6,8 @@ from dotenv import load_dotenv
 import google.generativeai as genai
 from sentence_transformers import SentenceTransformer, util
 import numpy as np
+import google.auth
+import os
 
 # Load environment variables
 load_dotenv()
@@ -18,6 +20,15 @@ GOOGLE_CREDENTIALS = st.secrets["GOOGLE_CREDENTIALS"]['gc']
 # Initialize Vertex AI
 project_id = GOOGLE_CREDENTIALS["project_id"]
 vertexai.init(project=project_id, location="us-central1")
+
+# Retrieve the JSON key file path from Streamlit Secrets
+key_path = st.secrets["google_key_path"]
+
+# Set the environment variable to point to the key file
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = key_path
+
+# Authenticate using the key file
+credentials, project_id = google.auth.default()
 
 # Set up Google Gemini-Pro AI model
 genai.configure(api_key=GOOGLE_API_KEY)
