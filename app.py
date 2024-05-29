@@ -8,6 +8,33 @@ from sentence_transformers import SentenceTransformer, util
 import numpy as np
 import google.auth
 import os
+import json
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import unpad
+import base64
+
+def decrypt_json_file(encrypted_file, secret_key):
+    # Convert the secret key to bytes and ensure it's 16 bytes long
+    key = secret_key.encode('utf-8')
+    key = key[:16].ljust(16, b'\0')
+
+    # Read the encrypted data
+    with open(encrypted_file, 'rb') as f:
+        encrypted_data = base64.b64decode(f.read())
+
+    # Extract the IV and encrypted data
+    iv = encrypted_data[:16]
+    encrypted_data = encrypted_data[16:]
+
+    # Create AES cipher
+    cipher = AES.new(key, AES.MODE_CBC, iv)
+
+    # Decrypt the data
+    decrypted_data = unpad(cipher.decrypt(encrypted_data), AES.block_size)
+
+    # Convert decrypted data to JSON
+    json_data = decrypted_data.decode('utf-8')
+    return json.loads(json_data)
 
 # Load environment variables
 load_dotenv()
@@ -22,10 +49,16 @@ project_id = GOOGLE_CREDENTIALS["project_id"]
 vertexai.init(project=project_id, location="us-central1")
 
 # Retrieve the JSON key file path from Streamlit Secrets
-key_path = st.secrets["GOOGLE_KEY_PATH"]
+secret_key = st.secrets["secret_key"]
+decrypted_json = decrypt_json_file('gdc_encrypted.json', secret_key)
+
+# Save decrypted JSON to a temporary file
+temp_key_path = 'temp_decrypted_key.json'
+with open(temp_key_path, 'w') as f:
+    json.dump(decrypted_json, f)
 
 # Set the environment variable to point to the key file
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = key_path
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = temp_key_path
 
 # Authenticate using the key file
 credentials, project_id = google.auth.default()
